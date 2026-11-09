@@ -63,10 +63,10 @@ bot.callbackQuery(/ack_(\d+)/, async (ctx) => {
             WHERE history_id = ${historyId} AND telegram_id = ${userId}
         `;
 
-        if (existing.length === 0) {
+       if (existing.length === 0) {
             await sql`
-                INSERT INTO acknowledgments (history_id, telegram_id)
-                VALUES (${historyId}, ${userId})
+                INSERT INTO acknowledgments (history_id, telegram_id, timestamp) 
+                VALUES (${historyId}, ${userId}, NOW())
             `;
         }
         await ctx.answerCallbackQuery("Вы подтвердили ознакомление!");
