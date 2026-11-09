@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация в системе</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tgBg: 'var(--tg-theme-bg-color, #ffffff)',
+                        tgText: 'var(--tg-theme-text-color, #000000)',
+                        tgBtn: 'var(--tg-theme-button-color, #3390ec)',
+                        tgBtnText: 'var(--tg-theme-button-text-color, #ffffff)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-black p-5 font-sans">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-black">
+        <h2 class="text-2xl font-bold mb-2 text-center">Анкета родителя</h2>
+        <p class="text-sm text-gray-500 mb-6 text-center">Пожалуйста, заполните данные для получения важных оповещений от школы.</p>
+
+        <form id="regForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Ваши ФИО</label>
+                <input type="text" id="parent_name" required placeholder="Например, Иванов Иван Иванович" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">ФИО ребенка</label>
+                <input type="text" id="child_name" required class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Класс</label>
+                <select id="school_class" required class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="" disabled selected>-- Выберите класс --</option>
+                    <optgroup label="Начальная школа">
+                        <option value="1А">1А</option><option value="1Б">1Б</option><option value="1В">1В</option><option value="1Г">1Г</option>
+                        <option value="2А">2А</option><option value="2Б">2Б</option><option value="2В">2В</option><option value="2Г">2Г</option>
+                        <option value="3А">3А</option><option value="3Б">3Б</option><option value="3В">3В</option><option value="3Г">3Г</option>
+                        <option value="4А">4А</option><option value="4Б">4Б</option><option value="4В">4В</option>
+                    </optgroup>
+                    <optgroup label="Старшая школа">
+                        <option value="5А">5А</option><option value="5Б">5Б</option><option value="5В">5В</option>
+                        <option value="6А">6А</option><option value="6Б">6Б</option>
+                        <option value="7А">7А</option><option value="7Б">7Б</option><option value="7В">7В</option>
+                        <option value="8А">8А</option><option value="8Б">8Б</option>
+                        <option value="9А">9А</option><option value="10А">10А</option><option value="11А">11А</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Номер телефона</label>
+                <input type="text" id="phone" required placeholder="+998912345678" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Email (необязательно)</label>
+                <input type="email" id="email" placeholder="example@mail.com" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Адрес (необязательно)</label>
+                <input type="text" id="address" placeholder="Город, улица, дом" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-tgBtn text-tgBtnText p-4 rounded font-bold hover:opacity-90 transition-opacity mt-4">
+                Завершить регистрацию
+            </button>
+            <p id="status" class="text-center mt-2 font-medium"></p>
+        </form>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showStatus('Ошибка: не удалось определить ваш Telegram ID', 'text-red-500');
+                return;
+            }
+
+            const schoolClass = document.getElementById('school_class').value;
+            if (!schoolClass) {
+                showStatus('Пожалуйста, выберите класс!', 'text-red-500');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = 'Отправка данных...';
+
+            const data = {
+                user_id: userId,
+                parent_full_name: document.getElementById('parent_name').value.trim(),
+                child_full_name: document.getElementById('child_name').value.trim(),
+                school_class: schoolClass,
+                phone: document.getElementById('phone').value.trim(),
+                email: document.getElementById('email').value.trim() || 'Не указан',
+                address: document.getElementById('address').value.trim() || 'Не указан'
+            };
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showStatus('Регистрация успешно пройдена!', 'text-green-600');
+                    setTimeout(() => tg.close(), 2000);
+                } else {
+                    showStatus(result.message || 'Произошла ошибка при регистрации.', 'text-red-500');
+                    btn.disabled = false;
+                    btn.innerText = 'Завершить регистрацию';
+                }
+            } catch (error) {
+                showStatus('Ошибка соединения с сервером.', 'text-red-500');
+                btn.disabled = false;
+                btn.innerText = 'Завершить регистрацию';
+            }
+        });
+
+        function showStatus(text, colorClass) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = text;
+            statusEl.className = `text-center mt-4 font-medium ${colorClass}`;
+        }
+    </script>
+</body>
+</html>

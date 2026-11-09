@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tgBg: 'var(--tg-theme-bg-color, #ffffff)',
+                        tgText: 'var(--tg-theme-text-color, #000000)',
+                        tgBtn: 'var(--tg-theme-button-color, #3390ec)',
+                        tgBtnText: 'var(--tg-theme-button-text-color, #ffffff)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
+        tbody tr:nth-child(even) { background-color: #f8fafc; }
+        .text-truncate {
+            max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;
+        }
+        .text-truncate:hover {
+            white-space: normal; overflow: visible; background-color: white; position: relative; z-index: 10;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 4px; border-radius: 4px;
+        }
+        .tab-btn { transition: all 0.2s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-black p-5 font-sans">
+    <h2 class="text-xl font-bold mb-4">Панель управления</h2>
+    
+    <div class="flex justify-between items-center border-b border-gray-300 mb-6 flex-wrap" id="top_nav">
+        <div class="flex space-x-2">
+            <button id="btn_send" onclick="switchTab('send')" class="tab-btn py-2 px-4 border-b-2 font-medium text-blue-600 border-blue-600 focus:outline-none">Рассылка</button>
+            <button id="btn_history" onclick="switchTab('history')" class="tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none">История</button>
+            <button id="btn_db" onclick="switchTab('db')" class="tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none">База данных</button>
+        </div>
+        <a id="btn_export" href="#" target="_blank" class="mb-2 mt-2 md:mt-0 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded font-medium shadow-sm transition-colors">📥 Скачать базу (Excel)</a>
+    </div>
+    
+    <div id="tab_send">
+        <div class="bg-white p-4 rounded shadow-sm border border-gray-200 mb-8">
+            <label for="target_type" class="block mb-2 font-medium">Тип рассылки:</label>
+            <select id="target_type" class="w-full mb-4 p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleFields()">
+                <option value="" disabled selected>-- Выберите тип рассылки --</option>
+                <option value="all">Всем родителям</option>
+                <option value="class">Определенному классу</option>
+                <option value="student">Конкретному ученику (родителю)</option>
+                <option value="sick" class="status-option">Болеющим ученикам</option>
+                <option value="excused" class="status-option">Отсутствующим (уваж. причина)</option>
+                <option value="unexcused" class="status-option">Отсутствующим (неуваж. причина)</option>
+                <option value="late" class="status-option">Опоздавшим</option>
+            </select>
+            
+            <div id="class_block" class="hidden mb-4">
+                <label for="class_select" class="block mb-2 font-medium">Выберите класс:</label>
+                <select id="class_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleClassChange()">
+                    <option value="">-- Выберите класс --</option>
+                </select>
+            </div>
+
+            <div id="student_block" class="hidden mb-4">
+                <label for="student_select" class="block mb-2 font-medium">Выберите ученика:</label>
+                <select id="student_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleStudentChange()">
+                    <option value="">-- Выберите ученика --</option>
+                </select>
+            </div>
+
+            <div id="parent_block" class="hidden mb-4">
+                <label for="parent_select" class="block mb-2 font-medium">Выберите родителя:</label>
+                <select id="parent_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">-- Выберите родителя --</option>
+                </select>
+            </div>
+
+            <label for="template_select" class="block mb-2 font-medium">Шаблоны сообщений:</label>
+            <select id="template_select" class="w-full mb-4 p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="applyTemplate()">
+                <option value="">-- Ввести текст вручную --</option>
+                <option value="Уважаемые родители! Напоминаем, что завтра состоится родительское собрание. Явка обязательна.">Родительское собрание</option>
+                <option value="Внимание! В связи с погодными условиями занятия сегодня отменяются.">Отмена занятий</option>
+                <option value="Уважаемые родители, просим срочно заполнить и передать классному руководителю форму согласия.">Сбор документов</option>
+                <option value="Напоминаем о необходимости своевременной оплаты за обучение.">Оплата за обучение</option>
+            </select>
+            
+            <label for="message" class="block mb-2 font-medium">Текст сообщения:</label>
+            <textarea id="message" class="w-full h-32 p-3 mb-4 border rounded border-gray-300 resize-y text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Введите текст оповещения..."></textarea>
+            
+            <button onclick="sendMessage()" class="w-full bg-tgBtn text-tgBtnText p-4 rounded font-bold hover:opacity-90 transition-opacity">Отправить</button>
+            <p id="status" class="mt-4 font-medium text-center"></p>
+        </div>
+    </div>
+
+    <div id="tab_history" class="hidden">
+        <div class="table-container bg-white rounded shadow-sm border border-gray-200">
+            <table class="text-black">
+                <thead>
+                    <tr>
+                        <th class="w-12">№</th>
+                        <th>Отправитель</th>
+                        <th>Ученик / Класс</th>
+                        <th>Родитель</th>
+                        <th>Сообщение</th>
+                        <th>Тип</th>
+                        <th>Ознакомились</th>
+                        <th>Время</th>
+                    </tr>
+                </thead>
+                <tbody id="history_tbody">
+                    <tr><td colspan="8" class="text-center py-4 text-gray-500">Загрузка истории...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab_db" class="hidden">
+        <div class="mb-4 flex flex-col md:flex-row justify-between gap-3 sticky top-0 z-10 bg-tgBg py-2">
+            <button id="btn_add_parent" onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors w-full md:w-auto">➕ Добавить родителя</button>
+            <input type="text" id="searchInput" oninput="filterDb()" placeholder="Поиск (ФИО, класс, телефон)..." class="w-full md:max-w-xs p-2 border rounded border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="table-container bg-white rounded shadow-sm border border-gray-200 overflow-visible">
+            <table class="text-black w-full">
+                <thead>
+                    <tr>
+                        <th class="w-12">ID</th>
+                        <th id="th_tg_id">Telegram ID</th>
+                        <th>ФИО Родителя</th>
+                        <th>ФИО Ребенка</th>
+                        <th>Класс</th>
+                        <th class="w-48">Статус ученика</th>
+                        <th id="th_contacts">Контакты</th>
+                        <th id="th_actions" class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="db_tbody">
+                    <tr><td colspan="8" class="text-center py-4 text-gray-500">Загрузка базы данных...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="edit_modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex justify-center items-center z-50 overflow-y-auto">
+        <div class="bg-white rounded p-6 w-full max-w-lg mx-4 text-black shadow-lg my-8">
+            <h3 id="modal_title" class="text-xl font-bold mb-4">Редактирование записи</h3>
+            <div class="space-y-3">
+                <div id="tg_id_block" class="hidden">
+                    <label class="block text-sm font-medium mb-1">Telegram ID</label>
+                    <input type="text" id="edit_telegram_id" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">ФИО Родителя</label>
+                    <input type="text" id="edit_parent_name" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">ФИО Ребенка</label>
+                    <input type="text" id="edit_child_name" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Класс</label>
+                    <select id="edit_school_class" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="" disabled selected>-- Выберите класс --</option>
+                        <optgroup label="Начальная школа">
+                            <option value="1А">1А</option><option value="1Б">1Б</option><option value="1В">1В</option><option value="1Г">1Г</option>
+                            <option value="2А">2А</option><option value="2Б">2Б</option><option value="2В">2В</option><option value="2Г">2Г</option>
+                            <option value="3А">3А</option><option value="3Б">3Б</option><option value="3В">3В</option><option value="3Г">3Г</option>
+                            <option value="4А">4А</option><option value="4Б">4Б</option><option value="4В">4В</option>
+                        </optgroup>
+                        <optgroup label="Старшая школа">
+                            <option value="5А">5А</option><option value="5Б">5Б</option><option value="5В">5В</option>
+                            <option value="6А">6А</option><option value="6Б">6Б</option>
+                            <option value="7А">7А</option><option value="7Б">7Б</option><option value="7В">7В</option>
+                            <option value="8А">8А</option><option value="8Б">8Б</option>
+                            <option value="9А">9А</option><option value="10А">10А</option><option value="11А">11А</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input type="text" id="edit_email" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Телефон</label>
+                    <input type="text" id="edit_phone" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Адрес</label>
+                    <input type="text" id="edit_address" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition-colors">Отмена</button>
+                <button onclick="saveParent()" class="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        
+        const desktopPlatforms = ['tdesktop', 'macos', 'web', 'weba'];
+        if (desktopPlatforms.includes(tg.platform)) {
+            if (tg.requestFullscreen) {
+                try { tg.requestFullscreen(); } catch (e) { tg.expand(); }
+            } else { tg.expand(); }
+        }
+
+        const userId = tg.initDataUnsafe?.user?.id || 0;
+        let userRole = 'none';
+        let userClass = null;
+
+        let currentClassData = [];
+        let editingParentId = null;
+        let isCreatingNew = false;
+        let currentDbData = []; 
+
+        const statusClasses = {
+            'present': 'bg-green-50 text-green-700 border-green-300',
+            'sick': 'bg-red-50 text-red-700 border-red-300',
+            'excused': 'bg-blue-50 text-blue-700 border-blue-300',
+            'unexcused': 'bg-gray-100 text-gray-800 border-gray-400',
+            'late': 'bg-orange-50 text-orange-700 border-orange-300'
+        };
+
+        const statusNames = {
+            'present': 'Присутствует',
+            'sick': 'Болеет',
+            'excused': 'Уважительная',
+            'unexcused': 'Неуважительная',
+            'late': 'Опоздал'
+        };
+
+        async function initApp() {
+            try {
+                const response = await fetch(`/api/me?user_id=${userId}`);
+                const data = await response.json();
+                userRole = data.role;
+                userClass = data.class;
+
+                if (userRole === 'none') {
+                    document.body.innerHTML = `<div class="p-5"><h2 class="text-red-500 font-bold text-xl">Доступ запрещен.</h2><p class="mt-2 text-lg">Система видит ваш Telegram ID как: <b>${userId}</b></p></div>`;
+                    return;
+                }
+
+                document.getElementById('btn_export').href = `/api/export?user_id=${userId}`;
+
+                if (userRole === 'teacher') {
+                    document.getElementById('btn_export').style.display = 'none';
+                    document.getElementById('btn_db').innerText = 'Мой класс';
+                    document.getElementById('btn_add_parent').style.display = 'none';
+                    
+                    const typeSelect = document.getElementById('target_type');
+                    for (let i = typeSelect.options.length - 1; i >= 0; i--) {
+                        if (['all', 'sick', 'excused', 'unexcused', 'late'].includes(typeSelect.options[i].value)) {
+                            typeSelect.remove(i);
+                        }
+                    }
+                    
+                    document.getElementById('th_tg_id').style.display = 'none';
+                    document.getElementById('th_contacts').style.display = 'none';
+                    document.getElementById('th_actions').style.display = 'none';
+                }
+
+                toggleFields();
+                loadClasses();
+                loadHistory();
+            } catch(e) { console.log(e); }
+        }
+
+        function switchTab(tabId) {
+            const tabs = ['send', 'history', 'db'];
+            tabs.forEach(tab => {
+                document.getElementById(`tab_${tab}`).classList.add('hidden');
+                document.getElementById(`btn_${tab}`).className = "tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none";
+            });
+
+            document.getElementById(`tab_${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn_${tabId}`).className = "tab-btn py-2 px-4 border-b-2 font-medium text-blue-600 border-blue-600 focus:outline-none";
+
+            if (tabId === 'history') loadHistory();
+            if (tabId === 'db') loadDb();
+        }
+
+        function applyTemplate() {
+            const template = document.getElementById('template_select').value;
+            if (template) document.getElementById('message').value = template;
+        }
+
+        async function loadClasses() {
+            try {
+                const response = await fetch(`/api/classes?user_id=${userId}`);
+                const data = await response.json();
+                const select = document.getElementById('class_select');
+                select.innerHTML = '<option value="">-- Выберите класс --</option>';
+                
+                data.classes.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls; option.textContent = `Класс ${cls}`;
+                    select.appendChild(option);
+                });
+            } catch (error) { console.error(error); }
+        }
+
+        async function loadHistory() {
+            const tbody = document.getElementById('history_tbody');
+            try {
+                const response = await fetch(`/api/history?user_id=${userId}`);
+                const data = await response.json();
+                
+                tbody.innerHTML = '';
+                if (data.history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">История рассылок пуста.</td></tr>';
+                    return;
+                }
+
+                data.history.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    let targetInfo = item.target;
+                    let typeLabel = "Индивидуальная";
+                    let studentName = "-";
+                    let parentName = "-";
+                    let className = "-";
+                    
+                    if (targetInfo === "Всем родителям") {
+                        typeLabel = "Массовая (Всем)";
+                        studentName = "Все ученики";
+                        parentName = "Все родители";
+                    } else if (["Всем болеющим", "Отсутствующим (уваж.)", "Отсутствующим (неуваж.)", "Опоздавшим"].includes(targetInfo)) {
+                        typeLabel = "По статусу";
+                        studentName = "Ученики: " + targetInfo;
+                        parentName = "Их родители";
+                    } else if (targetInfo.startsWith("Класс")) {
+                        typeLabel = "По классу";
+                        className = targetInfo.replace("Класс ", "");
+                        studentName = `Все ученики (${className})`;
+                        parentName = `Родители (${className})`;
+                    } else if (targetInfo.includes("(")) {
+                        const parts = targetInfo.split(" (реб. ");
+                        if (parts.length === 2) {
+                            parentName = parts[0];
+                            const studentData = parts[1].replace(")", "").split(", ");
+                            if (studentData.length === 2) {
+                                studentName = studentData[0];
+                                className = studentData[1];
+                            }
+                        }
+                    } else { parentName = targetInfo; }
+
+                    tr.innerHTML = `
+                        <td class="font-medium text-gray-600">${index + 1}</td>
+                        <td class="text-sm font-medium text-blue-600 whitespace-nowrap">${item.sender}</td>
+                        <td><div class="font-medium">${studentName}</div>${className !== '-' ? `<div class="text-xs text-gray-500">${className}</div>` : ''}</td>
+                        <td>${parentName}</td>
+                        <td><span class="text-truncate cursor-help" title="${item.text.replace(/"/g, '&quot;')}">${item.text}</span></td>
+                        <td><span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${typeLabel}</span></td>
+                        <td><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">${item.ack_count}</span></td>
+                        <td class="text-gray-500 whitespace-nowrap">${item.time}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Ошибка загрузки истории.</td></tr>'; }
+        }
+
+        async function loadDb() {
+            const tbody = document.getElementById('db_tbody');
+            try {
+                const response = await fetch(`/api/parents?user_id=${userId}`);
+                const data = await response.json();
+                currentDbData = data.parents;
+                filterDb();
+            } catch (error) { 
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Ошибка загрузки базы данных.</td></tr>'; 
+            }
+        }
+
+        function filterDb() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            
+            const filteredData = currentDbData.filter(p => {
+                const parentName = (p.parent_full_name || '').toLowerCase();
+                const childName = (p.child_full_name || '').toLowerCase();
+                const sClass = (p.school_class || '').toLowerCase();
+                const phone = (p.phone || '').toLowerCase();
+                const tgId = String(p.telegram_id || '');
+                const statusName = statusNames[p.student_status || 'present'].toLowerCase();
+
+                return parentName.includes(query) || 
+                       childName.includes(query) || 
+                       sClass.includes(query) || 
+                       phone.includes(query) || 
+                       tgId.includes(query) ||
+                       statusName.includes(query);
+            });
+            
+            renderDbTable(filteredData);
+        }
+
+        function renderDbTable(dataArray) {
+            const tbody = document.getElementById('db_tbody');
+            tbody.innerHTML = '';
+            
+            if (dataArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">Записи не найдены.</td></tr>';
+                return;
+            }
+
+            dataArray.forEach((p) => {
+                const tr = document.createElement('tr');
+                const st = p.student_status || 'present';
+                
+                let selectClass = `w-full p-1 text-xs border rounded outline-none font-medium transition-colors ${statusClasses[st]}`;
+                
+                let tgIdCell = userRole === 'teacher' ? '' : `<td class="text-xs text-gray-500">${p.telegram_id}</td>`;
+                let contactsCell = userRole === 'teacher' ? '' : `<td class="text-xs"><div class="text-gray-600">${p.email}</div><div class="text-gray-800 font-medium">${p.phone}</div></td>`;
+                let actionsCell = userRole === 'teacher' ? '' : `
+                    <td class="text-center space-x-2 whitespace-nowrap">
+                        <button onclick="openEditModal(${p.id})" class="text-blue-500 hover:text-blue-700 p-1">✏️</button>
+                        <button onclick="deleteParent(${p.id})" class="text-red-500 hover:text-red-700 p-1">🗑️</button>
+                    </td>
+                `;
+
+                tr.innerHTML = `
+                    <td class="font-medium text-gray-600">${p.id}</td>
+                    ${tgIdCell}
+                    <td class="font-medium">${p.parent_full_name}</td>
+                    <td>${p.child_full_name}</td>
+                    <td><span class="px-2 py-1 bg-gray-100 rounded text-xs font-bold">${p.school_class}</span></td>
+                    <td>
+                        <select onchange="changeStatus(${p.id}, this)" class="${selectClass}">
+                            <option value="present" ${st === 'present' ? 'selected' : ''}>Присутствует ✅</option>
+                            <option value="sick" ${st === 'sick' ? 'selected' : ''}>Болеет 🤒</option>
+                            <option value="excused" ${st === 'excused' ? 'selected' : ''}>Уважительная 📝</option>
+                            <option value="unexcused" ${st === 'unexcused' ? 'selected' : ''}>Неуважительная ❌</option>
+                            <option value="late" ${st === 'late' ? 'selected' : ''}>Опоздал ⏰</option>
+                        </select>
+                    </td>
+                    ${contactsCell}
+                    ${actionsCell}
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function changeStatus(parentId, selectElement) {
+            const newStatus = selectElement.value;
+            const originalStatus = currentDbData.find(p => p.id === parentId)?.student_status || 'present';
+            
+            try {
+                const response = await fetch(`/api/parents/${parentId}/status?user_id=${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const index = currentDbData.findIndex(p => p.id === parentId);
+                    if (index !== -1) {
+                        currentDbData[index].student_status = result.student_status;
+                    }
+                    selectElement.className = `w-full p-1 text-xs border rounded outline-none font-medium transition-colors ${statusClasses[result.student_status]}`;
+                } else {
+                    alert('Ошибка: ' + (result.message || 'Не удалось изменить статус'));
+                    selectElement.value = originalStatus;
+                }
+            } catch (error) {
+                alert('Ошибка соединения с сервером.');
+                selectElement.value = originalStatus;
+            }
+        }
+
+        function toggleFields() {
+            const type = document.getElementById('target_type').value;
+            const classBlock = document.getElementById('class_block');
+            const studentBlock = document.getElementById('student_block');
+            const parentBlock = document.getElementById('parent_block');
+            
+            if (['', 'all', 'sick', 'excused', 'unexcused', 'late'].includes(type)) {
+                classBlock.classList.add('hidden'); studentBlock.classList.add('hidden'); parentBlock.classList.add('hidden');
+            } else if (type === 'class') {
+                classBlock.classList.remove('hidden'); studentBlock.classList.add('hidden'); parentBlock.classList.add('hidden');
+            } else if (type === 'student') {
+                classBlock.classList.remove('hidden'); studentBlock.classList.remove('hidden'); handleClassChange();
+            }
+        }
+
+        async function handleClassChange() {
+            const type = document.getElementById('target_type').value;
+            const className = document.getElementById('class_select').value;
+            const studentSelect = document.getElementById('student_select');
+            const parentBlock = document.getElementById('parent_block');
+            
+            parentBlock.classList.add('hidden');
+            document.getElementById('parent_select').innerHTML = '<option value="">-- Выберите родителя --</option>';
+
+            if (type === 'student' && className) {
+                studentSelect.innerHTML = '<option value="">Загрузка...</option>';
+                try {
+                    const response = await fetch(`/api/students/${className}?user_id=${userId}`);
+                    const data = await response.json();
+                    currentClassData = data.students;
+                    studentSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
+                    
+                    const uniqueStudents = [...new Set(currentClassData.map(s => s.child_full_name))];
+                    uniqueStudents.forEach(studentName => {
+                        const option = document.createElement('option');
+                        option.value = studentName; option.textContent = studentName;
+                        studentSelect.appendChild(option);
+                    });
+                } catch (error) { studentSelect.innerHTML = '<option value="">Ошибка загрузки</option>'; }
+            } else {
+                studentSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
+                currentClassData = [];
+            }
+        }
+
+        function handleStudentChange() {
+            const studentName = document.getElementById('student_select').value;
+            const parentBlock = document.getElementById('parent_block');
+            const parentSelect = document.getElementById('parent_select');
+            
+            if (studentName) {
+                parentBlock.classList.remove('hidden');
+                parentSelect.innerHTML = '<option value="">-- Выберите родителя --</option>';
+                const parents = currentClassData.filter(s => s.child_full_name === studentName);
+                parents.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.telegram_id; option.textContent = p.parent_full_name;
+                    parentSelect.appendChild(option);
+                });
+            } else {
+                parentBlock.classList.add('hidden');
+                parentSelect.innerHTML = '<option value="">-- Выберите родителя --</option>';
+            }
+        }
+
+        async function sendMessage() {
+            const targetType = document.getElementById('target_type').value;
+            
+            if (!targetType) { 
+                showStatus('Выберите тип рассылки!', 'text-red-500'); 
+                return; 
+            }
+            
+            let targetValue = 'all';
+            
+            if (['sick', 'excused', 'unexcused', 'late'].includes(targetType)) {
+                targetValue = targetType;
+            } else if (targetType === 'class') {
+                targetValue = document.getElementById('class_select').value;
+                if (!targetValue) { showStatus('Выберите класс для отправки!', 'text-red-500'); return; }
+            } else if (targetType === 'student') {
+                const studentValue = document.getElementById('student_select').value;
+                if (!studentValue) { showStatus('Выберите ученика!', 'text-red-500'); return; }
+                targetValue = document.getElementById('parent_select').value;
+                if (!targetValue) { showStatus('Выберите родителя для отправки!', 'text-red-500'); return; }
+            }
+
+            const text = document.getElementById('message').value;
+            if (!text.trim()) { showStatus('Введите текст сообщения!', 'text-red-500'); return; }
+
+            if (targetType === 'all') {
+                if (!confirm('ВНИМАНИЕ! Вы собираетесь отправить сообщение ВСЕМ родителям школы. Вы уверены, что хотите продолжить?')) {
+                    return;
+                }
+            }
+
+            const sendBtn = document.querySelector('button[onclick="sendMessage()"]');
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            showStatus('Отправка...', 'text-blue-500');
+            
+            try {
+                const response = await fetch('/api/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_type: targetType, target_value: targetValue, text: text, user_id: userId })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showStatus(`Успешно отправлено ${result.count} родителям.`, 'text-green-500');
+                    document.getElementById('message').value = '';
+                    document.getElementById('template_select').value = '';
+                    setTimeout(() => switchTab('history'), 1500);
+                } else { 
+                    showStatus(result.message || 'Ошибка при отправке.', 'text-red-500'); 
+                }
+            } catch (error) { 
+                showStatus('Ошибка соединения с сервером.', 'text-red-500'); 
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function showStatus(text, colorClass) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = text; statusEl.className = `mt-4 font-medium text-center ${colorClass}`;
+        }
+
+        function openAddModal() {
+            isCreatingNew = true;
+            editingParentId = null;
+            document.getElementById('modal_title').innerText = "Добавление родителя";
+            document.getElementById('tg_id_block').classList.remove('hidden');
+            
+            document.getElementById('edit_telegram_id').value = '';
+            document.getElementById('edit_parent_name').value = '';
+            document.getElementById('edit_child_name').value = '';
+            document.getElementById('edit_school_class').value = '';
+            document.getElementById('edit_email').value = 'Не указан';
+            document.getElementById('edit_phone').value = '';
+            document.getElementById('edit_address').value = 'Не указан';
+            document.getElementById('edit_modal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            // Исправлено: нестрогое сравнение (==) защищает от несовпадения типов Number и String
+            const parent = currentDbData.find(p => p.id == id);
+            if (!parent) return;
+            
+            isCreatingNew = false;
+            editingParentId = id;
+            document.getElementById('modal_title').innerText = "Редактирование записи";
+            document.getElementById('tg_id_block').classList.add('hidden');
+
+            document.getElementById('edit_parent_name').value = parent.parent_full_name || '';
+            document.getElementById('edit_child_name').value = parent.child_full_name || '';
+            
+            // Задаем класс из базы в селект, приводя к верхнему регистру для точного совпадения
+            const sClass = (parent.school_class || '').trim().toUpperCase();
+            document.getElementById('edit_school_class').value = sClass;
+            
+            document.getElementById('edit_email').value = parent.email || '';
+            document.getElementById('edit_phone').value = parent.phone || '';
+            document.getElementById('edit_address').value = parent.address || '';
+            document.getElementById('edit_modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit_modal').classList.add('hidden');
+        }
+
+        async function saveParent() {
+            const data = {
+                parent_full_name: document.getElementById('edit_parent_name').value,
+                child_full_name: document.getElementById('edit_child_name').value,
+                school_class: document.getElementById('edit_school_class').value,
+                email: document.getElementById('edit_email').value,
+                phone: document.getElementById('edit_phone').value,
+                address: document.getElementById('edit_address').value
+            };
+
+            // Проверка на то, выбран ли класс
+            if (!data.school_class) {
+                alert('Пожалуйста, выберите класс из списка!');
+                return;
+            }
+
+            try {
+                let url, method;
+                if (isCreatingNew) {
+                    data.telegram_id = parseInt(document.getElementById('edit_telegram_id').value);
+                    if (!data.telegram_id) { alert('Введите корректный Telegram ID'); return; }
+                    url = `/api/parents?user_id=${userId}`;
+                    method = 'POST';
+                } else {
+                    if (!editingParentId) return;
+                    url = `/api/parents/${editingParentId}?user_id=${userId}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') { 
+                    closeEditModal(); 
+                    loadDb(); 
+                } else { 
+                    alert('Ошибка: ' + (result.message || 'Сбой при сохранении')); 
+                }
+            } catch (error) { alert('Ошибка соединения с сервером.'); }
+        }
+
+        async function deleteParent(id) {
+            if (!confirm('Удалить эту запись? Действие необратимо.')) return;
+            try {
+                const response = await fetch(`/api/parents/${id}?user_id=${userId}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (result.status === 'success') { loadDb(); } 
+                else { alert('Ошибка при удалении данных.'); }
+            } catch (error) { alert('Ошибка соединения с сервером.'); }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
