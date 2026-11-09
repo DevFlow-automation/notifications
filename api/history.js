@@ -5,14 +5,14 @@ const sql = neon(process.env.DATABASE_URL);
 export default async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ error: "Method Not Allowed" });
 
-    // Получаем последние 50 сообщений вместе с количеством подтверждений "Ознакомлен"
     try {
+        // 1. Получаем саму историю
         const history = await sql`
-            SELECT
-                m.id,
-                m.sender_id,
-                m.recipient_id,
-                m.message_text,
+            SELECT 
+                m.id, 
+                m.sender_id, 
+                m.recipient_id, 
+                m.message_text, 
                 m.timestamp,
                 (SELECT COUNT(id) FROM acknowledgments a WHERE a.history_id = m.id) as ack_count
             FROM messages m
@@ -20,19 +20,34 @@ export default async function handler(req, res) {
             LIMIT 50
         `;
 
+        // 2. Получаем всех родителей, чтобы сопоставить их ID с именами
+        const parents = await sql`SELECT telegram_id, parent_full_name, child_full_name, school_class FROM parents`;
+        const parentMap = new Map();
+        // Сохраняем в Map для мгновенного поиска по ID
+        parents.forEach(p => parentMap.set(String(p.telegram_id), p));
+
         const formattedHistory = history.map(msg => {
-            // Форматируем дату в DD.MM.YYYY HH:MM
             const d = new Date(msg.timestamp);
             const timeStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
-            // Человекопонятный получатель
             let targetDisplay = msg.recipient_id;
+            
+            // Логика формирования получателя под требования index.html
             if (targetDisplay === 'all') targetDisplay = "Всем родителям";
             else if (targetDisplay === 'sick') targetDisplay = "Всем болеющим";
             else if (targetDisplay === 'excused') targetDisplay = "Отсутствующим (уваж.)";
             else if (targetDisplay === 'unexcused') targetDisplay = "Отсутствующим (неуваж.)";
             else if (targetDisplay === 'late') targetDisplay = "Опоздавшим";
-            else if (!isNaN(targetDisplay)) targetDisplay = `Родитель ID: ${targetDisplay}`; // Точечная отправка
+            else if (!isNaN(targetDisplay)) {
+                // Если recipient_id — это цифры (Telegram ID)
+                const p = parentMap.get(String(targetDisplay));
+                if (p) {
+                    // ФОРМАТ, КОТОРЫЙ ЖДЕТ ФРОНТЕНД: Имя Родителя (реб. Имя Ребенка, Класс)
+                    targetDisplay = `${p.parent_full_name} (реб. ${p.child_full_name}, ${p.school_class})`;
+                } else {
+                    targetDisplay = `Удаленный профиль (ID: ${targetDisplay})`;
+                }
+            }
             else targetDisplay = `Класс ${targetDisplay}`;
 
             // Человекопонятный отправитель
