@@ -3,215 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель управления</title>
+    <title>Панель управления NGS</title>
+    
+    <!-- Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Шрифт Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        tgBg: 'var(--tg-theme-bg-color, #ffffff)',
-                        tgText: 'var(--tg-theme-text-color, #000000)',
-                        tgBtn: 'var(--tg-theme-button-color, #3390ec)',
-                        tgBtnText: 'var(--tg-theme-button-text-color, #ffffff)',
+                        primary: '#4f46e5', // Индиго
+                        primaryHover: '#4338ca',
                     }
                 }
             }
         }
     </script>
     <style>
+        body { background-color: #f8fafc; -webkit-font-smoothing: antialiased; }
+        
+        /* Стилизация скроллбара */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Современные таблицы */
         .table-container { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
-        tbody tr:nth-child(even) { background-color: #f8fafc; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { background-color: #f8fafc; font-weight: 600; color: #64748b; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        td { padding: 16px 20px; font-size: 0.875rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        tbody tr { transition: background-color 0.15s ease; }
+        tbody tr:hover { background-color: #f8fafc; }
+        
+        /* Тултипы для длинных текстов */
         .text-truncate {
-            max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;
+            max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;
         }
         .text-truncate:hover {
-            white-space: normal; overflow: visible; background-color: white; position: relative; z-index: 10;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 4px; border-radius: 4px;
+            white-space: normal; overflow: visible; background-color: #1e293b; color: white; position: absolute; z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.8rem;
         }
-        .tab-btn { transition: all 0.2s ease-in-out; }
+
+        /* Кастомный Select */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.2em;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-black p-5 font-sans">
-    <h2 class="text-xl font-bold mb-4">Панель управления</h2>
-    
-    <div class="flex justify-between items-center border-b border-gray-300 mb-6 flex-wrap" id="top_nav">
-        <div class="flex space-x-2">
-            <button id="btn_send" onclick="switchTab('send')" class="tab-btn py-2 px-4 border-b-2 font-medium text-blue-600 border-blue-600 focus:outline-none">Рассылка</button>
-            <button id="btn_history" onclick="switchTab('history')" class="tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none">История</button>
-            <button id="btn_db" onclick="switchTab('db')" class="tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none">База данных</button>
-        </div>
-        <a id="btn_export" href="#" target="_blank" class="mb-2 mt-2 md:mt-0 bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded font-medium shadow-sm transition-colors">📥 Скачать базу (Excel)</a>
-    </div>
-    
-    <div id="tab_send">
-        <div class="bg-white p-4 rounded shadow-sm border border-gray-200 mb-8">
-            <label for="target_type" class="block mb-2 font-medium">Тип рассылки:</label>
-            <select id="target_type" class="w-full mb-4 p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleFields()">
-                <option value="" disabled selected>-- Выберите тип рассылки --</option>
-                <option value="all">Всем родителям</option>
-                <option value="class">Определенному классу</option>
-                <option value="student">Конкретному ученику (родителю)</option>
-                <option value="sick" class="status-option">Болеющим ученикам</option>
-                <option value="excused" class="status-option">Отсутствующим (уваж. причина)</option>
-                <option value="unexcused" class="status-option">Отсутствующим (неуваж. причина)</option>
-                <option value="late" class="status-option">Опоздавшим</option>
-            </select>
-            
-            <div id="class_block" class="hidden mb-4">
-                <label for="class_select" class="block mb-2 font-medium">Выберите класс:</label>
-                <select id="class_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleClassChange()">
-                    <option value="">-- Выберите класс --</option>
-                </select>
+<body class="text-slate-800 p-4 md:p-8 min-h-screen">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Шапка -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                    <i class="ph ph-shield-check text-primary text-3xl"></i>
+                    NGS Control Panel
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">Система управления оповещениями школы</p>
             </div>
-
-            <div id="student_block" class="hidden mb-4">
-                <label for="student_select" class="block mb-2 font-medium">Выберите ученика:</label>
-                <select id="student_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="handleStudentChange()">
-                    <option value="">-- Выберите ученика --</option>
-                </select>
-            </div>
-
-            <div id="parent_block" class="hidden mb-4">
-                <label for="parent_select" class="block mb-2 font-medium">Выберите родителя:</label>
-                <select id="parent_select" class="w-full p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">-- Выберите родителя --</option>
-                </select>
-            </div>
-
-            <label for="template_select" class="block mb-2 font-medium">Шаблоны сообщений:</label>
-            <select id="template_select" class="w-full mb-4 p-3 border rounded border-gray-300 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="applyTemplate()">
-                <option value="">-- Ввести текст вручную --</option>
-                <option value="Уважаемые родители! Напоминаем, что завтра состоится родительское собрание. Явка обязательна.">Родительское собрание</option>
-                <option value="Внимание! В связи с погодными условиями занятия сегодня отменяются.">Отмена занятий</option>
-                <option value="Уважаемые родители, просим срочно заполнить и передать классному руководителю форму согласия.">Сбор документов</option>
-                <option value="Напоминаем о необходимости своевременной оплаты за обучение.">Оплата за обучение</option>
-            </select>
             
-            <label for="message" class="block mb-2 font-medium">Текст сообщения:</label>
-            <textarea id="message" class="w-full h-32 p-3 mb-4 border rounded border-gray-300 resize-y text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Введите текст оповещения..."></textarea>
-            
-            <button onclick="sendMessage()" class="w-full bg-tgBtn text-tgBtnText p-4 rounded font-bold hover:opacity-90 transition-opacity">Отправить</button>
-            <p id="status" class="mt-4 font-medium text-center"></p>
+            <a id="btn_export" href="#" target="_blank" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium py-2.5 px-4 rounded-xl shadow-sm ring-1 ring-slate-200 transition-all">
+                <i class="ph ph-file-xls text-emerald-600 text-lg"></i>
+                Экспорт базы
+            </a>
+        </header>
+        
+        <!-- Навигация (Tabs) -->
+        <nav class="flex space-x-1 bg-slate-200/60 p-1.5 rounded-xl w-fit mb-6" id="top_nav">
+            <button id="btn_send" onclick="switchTab('send')" class="tab-btn px-5 py-2.5 rounded-lg font-semibold text-sm bg-white text-primary shadow-sm ring-1 ring-slate-900/5 transition-all duration-200 flex items-center gap-2">
+                <i class="ph ph-paper-plane-right text-lg"></i> Рассылка
+            </button>
+            <button id="btn_history" onclick="switchTab('history')" class="tab-btn px-5 py-2.5 rounded-lg font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-all duration-200 flex items-center gap-2">
+                <i class="ph ph-clock-counter-clockwise text-lg"></i> История
+            </button>
+            <button id="btn_db" onclick="switchTab('db')" class="tab-btn px-5 py-2.5 rounded-lg font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-all duration-200 flex items-center gap-2">
+                <i class="ph ph-users text-lg"></i> <span id="db_tab_text">База данных</span>
+            </button>
+        </nav>
+        
+        <!-- КОНТЕНТ: РАССЫЛКА -->
+        <div id="tab_send" class="fade-in">
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden">
+                <div class="p-6 md:p-8">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-6 border-b border-slate-100 pb-4">Создание рассылки</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Тип рассылки -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Аудитория</label>
+                            <select id="target_type" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" onchange="toggleFields()">
+                                <option value="" disabled selected>Выберите аудиторию...</option>
+                                <option value="all">Всем родителям школы</option>
+                                <option value="class">Определенному классу</option>
+                                <option value="student">Конкретному ученику (родителю)</option>
+                                <option value="sick" class="font-medium text-rose-600">🤒 Болеющим ученикам</option>
+                                <option value="excused" class="font-medium text-blue-600">📝 Отсутствующим (уваж.)</option>
+                                <option value="unexcused" class="font-medium text-slate-500">❌ Отсутствующим (неуваж.)</option>
+                                <option value="late" class="font-medium text-orange-600">⏰ Опоздавшим</option>
+                            </select>
+                        </div>
+
+                        <!-- Класс -->
+                        <div id="class_block" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Класс</label>
+                            <select id="class_select" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" onchange="handleClassChange()">
+                                <option value="">-- Выберите класс --</option>
+                            </select>
+                        </div>
+
+                        <!-- Ученик -->
+                        <div id="student_block" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Ученик</label>
+                            <select id="student_select" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" onchange="handleStudentChange()">
+                                <option value="">-- Выберите ученика --</option>
+                            </select>
+                        </div>
+
+                        <!-- Родитель -->
+                        <div id="parent_block" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Родитель-получатель</label>
+                            <select id="parent_select" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                                <option value="">-- Выберите родителя --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center justify-between">
+                            Текст сообщения
+                            <select id="template_select" class="text-sm bg-transparent border-none text-primary cursor-pointer focus:ring-0 p-0 font-medium" onchange="applyTemplate()">
+                                <option value="">+ Использовать шаблон</option>
+                                <option value="Уважаемые родители! Напоминаем, что завтра состоится родительское собрание. Явка обязательна.">Собрание</option>
+                                <option value="Внимание! В связи с погодными условиями занятия сегодня отменяются.">Отмена занятий</option>
+                                <option value="Уважаемые родители, просим срочно заполнить и передать классному руководителю форму согласия.">Документы</option>
+                            </select>
+                        </label>
+                        <textarea id="message" class="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 resize-y focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors leading-relaxed" placeholder="Введите текст, который получат родители..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="bg-slate-50 px-6 py-4 md:px-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p id="status" class="text-sm font-medium text-slate-500 w-full sm:w-auto text-center sm:text-left"></p>
+                    <button onclick="sendMessage()" class="w-full sm:w-auto bg-primary hover:bg-primaryHover text-white px-8 py-3 rounded-xl font-semibold shadow-sm shadow-primary/30 transition-all flex items-center justify-center gap-2">
+                        <i class="ph-fill ph-paper-plane-tilt text-lg"></i> Отправить оповещение
+                    </button>
+                </div>
+            </div>
         </div>
+
+        <!-- КОНТЕНТ: ИСТОРИЯ -->
+        <div id="tab_history" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="w-16">№</th>
+                                <th>Отправитель</th>
+                                <th>Получатель</th>
+                                <th>Сообщение</th>
+                                <th class="text-center">Прочли</th>
+                                <th class="text-right">Время</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history_tbody">
+                            <tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">
+                                <i class="ph ph-spinner-gap animate-spin text-3xl mb-2 block mx-auto"></i> Загрузка истории...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- КОНТЕНТ: БАЗА ДАННЫХ -->
+        <div id="tab_db" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                    <button id="btn_add_parent" onclick="openEditModal(null, true)" class="w-full md:w-auto bg-white hover:bg-slate-50 text-slate-800 font-medium py-2 px-4 rounded-lg shadow-sm ring-1 ring-slate-200 transition-all flex items-center justify-center gap-2 text-sm">
+                        <i class="ph-bold ph-plus"></i> Добавить родителя
+                    </button>
+                    <div class="relative w-full md:max-w-xs">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="searchInput" oninput="filterDb()" placeholder="Поиск по ФИО, классу..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="w-12">ID</th>
+                                <th id="th_tg_id">TG ID</th>
+                                <th>Родитель / Ребенок</th>
+                                <th class="w-20 text-center">Класс</th>
+                                <th class="w-48 text-center">Статус ученика</th>
+                                <th id="th_contacts">Контакты</th>
+                                <th id="th_actions" class="text-center">Настройки</th>
+                            </tr>
+                        </thead>
+                        <tbody id="db_tbody">
+                            <tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium">Загрузка базы данных...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <div id="tab_history" class="hidden">
-        <div class="table-container bg-white rounded shadow-sm border border-gray-200">
-            <table class="text-black">
-                <thead>
-                    <tr>
-                        <th class="w-12">№</th>
-                        <th>Отправитель</th>
-                        <th>Ученик / Класс</th>
-                        <th>Родитель</th>
-                        <th>Сообщение</th>
-                        <th>Тип</th>
-                        <th>Ознакомились</th>
-                        <th>Время</th>
-                    </tr>
-                </thead>
-                <tbody id="history_tbody">
-                    <tr><td colspan="8" class="text-center py-4 text-gray-500">Загрузка истории...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="tab_db" class="hidden">
-        <div class="mb-4 flex flex-col md:flex-row justify-between gap-3 sticky top-0 z-10 bg-tgBg py-2">
-            <button id="btn_add_parent" onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors w-full md:w-auto">➕ Добавить родителя</button>
-            <input type="text" id="searchInput" oninput="filterDb()" placeholder="Поиск (ФИО, класс, телефон)..." class="w-full md:max-w-xs p-2 border rounded border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <div class="table-container bg-white rounded shadow-sm border border-gray-200 overflow-visible">
-            <table class="text-black w-full">
-                <thead>
-                    <tr>
-                        <th class="w-12">ID</th>
-                        <th id="th_tg_id">Telegram ID</th>
-                        <th>ФИО Родителя</th>
-                        <th>ФИО Ребенка</th>
-                        <th>Класс</th>
-                        <th class="w-48">Статус ученика</th>
-                        <th id="th_contacts">Контакты</th>
-                        <th id="th_actions" class="text-center">Действия</th>
-                    </tr>
-                </thead>
-                <tbody id="db_tbody">
-                    <tr><td colspan="8" class="text-center py-4 text-gray-500">Загрузка базы данных...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="edit_modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex justify-center items-center z-50 overflow-y-auto">
-        <div class="bg-white rounded p-6 w-full max-w-lg mx-4 text-black shadow-lg my-8">
-            <h3 id="modal_title" class="text-xl font-bold mb-4">Редактирование записи</h3>
-            <div class="space-y-3">
+    <!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ -->
+    <div id="edit_modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex-col justify-center items-center z-50 p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="modal_content">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="modal_title" class="text-lg font-bold text-slate-900">Редактирование профиля</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
                 <div id="tg_id_block" class="hidden">
-                    <label class="block text-sm font-medium mb-1">Telegram ID</label>
-                    <input type="text" id="edit_telegram_id" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Telegram ID</label>
+                    <input type="text" id="edit_telegram_id" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm font-medium">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">ФИО Родителя</label>
+                        <input type="text" id="edit_parent_name" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm">
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">ФИО Ребенка</label>
+                        <input type="text" id="edit_child_name" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm">
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Класс</label>
+                        <select id="edit_school_class" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-white text-sm">
+                            <option value="" disabled selected>-- Класс --</option>
+                            <optgroup label="Младшие">
+                                <option value="1А">1А</option><option value="1Б">1Б</option><option value="1В">1В</option><option value="1Г">1Г</option>
+                                <option value="2А">2А</option><option value="2Б">2Б</option><option value="2В">2В</option><option value="2Г">2Г</option>
+                                <option value="3А">3А</option><option value="3Б">3Б</option><option value="3В">3В</option><option value="3Г">3Г</option>
+                                <option value="4А">4А</option><option value="4Б">4Б</option><option value="4В">4В</option>
+                            </optgroup>
+                            <optgroup label="Старшие">
+                                <option value="5А">5А</option><option value="5Б">5Б</option><option value="5В">5В</option>
+                                <option value="6А">6А</option><option value="6Б">6Б</option>
+                                <option value="7А">7А</option><option value="7Б">7Б</option><option value="7В">7В</option>
+                                <option value="8А">8А</option><option value="8Б">8Б</option>
+                                <option value="9А">9А</option><option value="10А">10А</option><option value="11А">11А</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Телефон</label>
+                        <input type="text" id="edit_phone" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm">
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
+                        <input type="text" id="edit_email" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm">
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">ФИО Родителя</label>
-                    <input type="text" id="edit_parent_name" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">ФИО Ребенка</label>
-                    <input type="text" id="edit_child_name" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Класс</label>
-                    <select id="edit_school_class" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                        <option value="" disabled selected>-- Выберите класс --</option>
-                        <optgroup label="Начальная школа">
-                            <option value="1А">1А</option><option value="1Б">1Б</option><option value="1В">1В</option><option value="1Г">1Г</option>
-                            <option value="2А">2А</option><option value="2Б">2Б</option><option value="2В">2В</option><option value="2Г">2Г</option>
-                            <option value="3А">3А</option><option value="3Б">3Б</option><option value="3В">3В</option><option value="3Г">3Г</option>
-                            <option value="4А">4А</option><option value="4Б">4Б</option><option value="4В">4В</option>
-                        </optgroup>
-                        <optgroup label="Старшая школа">
-                            <option value="5А">5А</option><option value="5Б">5Б</option><option value="5В">5В</option>
-                            <option value="6А">6А</option><option value="6Б">6Б</option>
-                            <option value="7А">7А</option><option value="7Б">7Б</option><option value="7В">7В</option>
-                            <option value="8А">8А</option><option value="8Б">8Б</option>
-                            <option value="9А">9А</option><option value="10А">10А</option><option value="11А">11А</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Email</label>
-                    <input type="text" id="edit_email" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Телефон</label>
-                    <input type="text" id="edit_phone" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Адрес</label>
-                    <input type="text" id="edit_address" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Адрес</label>
+                    <input type="text" id="edit_address" class="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-sm">
                 </div>
             </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition-colors">Отмена</button>
-                <button onclick="saveParent()" class="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors">Сохранить</button>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="closeEditModal()" class="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors text-sm">Отмена</button>
+                <button onclick="saveParent()" class="px-6 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primaryHover shadow-sm shadow-primary/30 transition-all text-sm">Сохранить</button>
             </div>
         </div>
     </div>
 
+    <!-- LOGIC SCRIPT (Остался без изменений, кроме классов стилей для элементов) -->
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         
         const desktopPlatforms = ['tdesktop', 'macos', 'web', 'weba'];
         if (desktopPlatforms.includes(tg.platform)) {
-            if (tg.requestFullscreen) {
-                try { tg.requestFullscreen(); } catch (e) { tg.expand(); }
-            } else { tg.expand(); }
+            if (tg.requestFullscreen) { try { tg.requestFullscreen(); } catch (e) { tg.expand(); } } 
+            else { tg.expand(); }
         }
 
         const userId = tg.initDataUnsafe?.user?.id || 0;
@@ -223,21 +314,16 @@
         let isCreatingNew = false;
         let currentDbData = []; 
 
-        const statusClasses = {
-            'present': 'bg-green-50 text-green-700 border-green-300',
-            'sick': 'bg-red-50 text-red-700 border-red-300',
-            'excused': 'bg-blue-50 text-blue-700 border-blue-300',
-            'unexcused': 'bg-gray-100 text-gray-800 border-gray-400',
-            'late': 'bg-orange-50 text-orange-700 border-orange-300'
+        // Обновленные красивые бейджи для статусов
+        const statusStyles = {
+            'present': { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-600/20' },
+            'sick': { bg: 'bg-rose-50', text: 'text-rose-700', ring: 'ring-rose-600/20' },
+            'excused': { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-600/20' },
+            'unexcused': { bg: 'bg-slate-100', text: 'text-slate-700', ring: 'ring-slate-500/20' },
+            'late': { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-600/20' }
         };
 
-        const statusNames = {
-            'present': 'Присутствует',
-            'sick': 'Болеет',
-            'excused': 'Уважительная',
-            'unexcused': 'Неуважительная',
-            'late': 'Опоздал'
-        };
+        const statusNames = { 'present': 'Присутствует', 'sick': 'Болеет', 'excused': 'Уважительная', 'unexcused': 'Неуважительная', 'late': 'Опоздал' };
 
         async function initApp() {
             try {
@@ -247,7 +333,7 @@
                 userClass = data.class;
 
                 if (userRole === 'none') {
-                    document.body.innerHTML = `<div class="p-5"><h2 class="text-red-500 font-bold text-xl">Доступ запрещен.</h2><p class="mt-2 text-lg">Система видит ваш Telegram ID как: <b>${userId}</b></p></div>`;
+                    document.body.innerHTML = `<div class="flex items-center justify-center h-screen"><div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center"><i class="ph-fill ph-lock-key text-4xl text-rose-500 mb-3"></i><h2 class="text-slate-900 font-bold text-xl mb-1">Доступ закрыт</h2><p class="text-slate-500 text-sm">Ваш Telegram ID: <span class="font-mono bg-slate-100 px-1 rounded">${userId}</span></p></div></div>`;
                     return;
                 }
 
@@ -255,7 +341,7 @@
 
                 if (userRole === 'teacher') {
                     document.getElementById('btn_export').style.display = 'none';
-                    document.getElementById('btn_db').innerText = 'Мой класс';
+                    document.getElementById('db_tab_text').innerText = 'Мой класс';
                     document.getElementById('btn_add_parent').style.display = 'none';
                     
                     const typeSelect = document.getElementById('target_type');
@@ -272,19 +358,21 @@
 
                 toggleFields();
                 loadClasses();
-                loadHistory();
             } catch(e) { console.log(e); }
         }
 
         function switchTab(tabId) {
             const tabs = ['send', 'history', 'db'];
+            const activeClass = "tab-btn px-5 py-2.5 rounded-lg font-semibold text-sm bg-white text-primary shadow-sm ring-1 ring-slate-900/5 transition-all duration-200 flex items-center gap-2";
+            const inactiveClass = "tab-btn px-5 py-2.5 rounded-lg font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-all duration-200 flex items-center gap-2";
+
             tabs.forEach(tab => {
                 document.getElementById(`tab_${tab}`).classList.add('hidden');
-                document.getElementById(`btn_${tab}`).className = "tab-btn py-2 px-4 border-b-2 font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none";
+                document.getElementById(`btn_${tab}`).className = inactiveClass;
             });
 
             document.getElementById(`tab_${tabId}`).classList.remove('hidden');
-            document.getElementById(`btn_${tabId}`).className = "tab-btn py-2 px-4 border-b-2 font-medium text-blue-600 border-blue-600 focus:outline-none";
+            document.getElementById(`btn_${tabId}`).className = activeClass;
 
             if (tabId === 'history') loadHistory();
             if (tabId === 'db') loadDb();
@@ -292,7 +380,7 @@
 
         function applyTemplate() {
             const template = document.getElementById('template_select').value;
-            if (template) document.getElementById('message').value = template;
+            if (template) { document.getElementById('message').value = template; document.getElementById('template_select').value = ""; }
         }
 
         async function loadClasses() {
@@ -301,106 +389,67 @@
                 const data = await response.json();
                 const select = document.getElementById('class_select');
                 select.innerHTML = '<option value="">-- Выберите класс --</option>';
-                
-                data.classes.forEach(cls => {
-                    const option = document.createElement('option');
-                    option.value = cls; option.textContent = `Класс ${cls}`;
-                    select.appendChild(option);
-                });
+                data.classes.forEach(cls => { select.appendChild(new Option(`Класс ${cls}`, cls)); });
             } catch (error) { console.error(error); }
         }
 
         async function loadHistory() {
             const tbody = document.getElementById('history_tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium"><i class="ph ph-spinner-gap animate-spin text-3xl mb-2 block mx-auto"></i> Загрузка...</td></tr>';
             try {
                 const response = await fetch(`/api/history?user_id=${userId}`);
                 const data = await response.json();
                 
                 tbody.innerHTML = '';
                 if (data.history.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">История рассылок пуста.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">История пуста</td></tr>';
                     return;
                 }
 
                 data.history.forEach((item, index) => {
                     const tr = document.createElement('tr');
-                    let targetInfo = item.target;
-                    let typeLabel = "Индивидуальная";
-                    let studentName = "-";
-                    let parentName = "-";
-                    let className = "-";
                     
-                    if (targetInfo === "Всем родителям") {
-                        typeLabel = "Массовая (Всем)";
-                        studentName = "Все ученики";
-                        parentName = "Все родители";
-                    } else if (["Всем болеющим", "Отсутствующим (уваж.)", "Отсутствующим (неуваж.)", "Опоздавшим"].includes(targetInfo)) {
-                        typeLabel = "По статусу";
-                        studentName = "Ученики: " + targetInfo;
-                        parentName = "Их родители";
-                    } else if (targetInfo.startsWith("Класс")) {
-                        typeLabel = "По классу";
-                        className = targetInfo.replace("Класс ", "");
-                        studentName = `Все ученики (${className})`;
-                        parentName = `Родители (${className})`;
-                    } else if (targetInfo.includes("(")) {
-                        const parts = targetInfo.split(" (реб. ");
-                        if (parts.length === 2) {
-                            parentName = parts[0];
-                            const studentData = parts[1].replace(")", "").split(", ");
-                            if (studentData.length === 2) {
-                                studentName = studentData[0];
-                                className = studentData[1];
-                            }
-                        }
-                    } else { parentName = targetInfo; }
+                    let targetHtml = item.target;
+                    let targetBadge = "";
+                    if (item.target === "Всем родителям") targetBadge = `<span class="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full font-medium ml-2">Масс</span>`;
+                    else if (item.target.includes("Класс")) targetBadge = `<span class="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full font-medium ml-2">Класс</span>`;
+                    else if (item.target.includes("реб.")) targetBadge = `<span class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium ml-2">ЛС</span>`;
+                    else targetBadge = `<span class="bg-rose-50 text-rose-600 text-xs px-2 py-0.5 rounded-full font-medium ml-2">Статус</span>`;
 
                     tr.innerHTML = `
-                        <td class="font-medium text-gray-600">${index + 1}</td>
-                        <td class="text-sm font-medium text-blue-600 whitespace-nowrap">${item.sender}</td>
-                        <td><div class="font-medium">${studentName}</div>${className !== '-' ? `<div class="text-xs text-gray-500">${className}</div>` : ''}</td>
-                        <td>${parentName}</td>
-                        <td><span class="text-truncate cursor-help" title="${item.text.replace(/"/g, '&quot;')}">${item.text}</span></td>
-                        <td><span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${typeLabel}</span></td>
-                        <td><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">${item.ack_count}</span></td>
-                        <td class="text-gray-500 whitespace-nowrap">${item.time}</td>
+                        <td class="text-slate-400 font-medium text-xs">${index + 1}</td>
+                        <td class="font-medium text-slate-700">${item.sender}</td>
+                        <td class="font-medium text-slate-900 flex items-center">${targetHtml} ${targetBadge}</td>
+                        <td><div class="text-truncate relative cursor-default" title="${item.text.replace(/"/g, '&quot;')}">${item.text}</div></td>
+                        <td class="text-center">
+                            <span class="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20 rounded-full text-xs font-bold">
+                                ${item.ack_count}
+                            </span>
+                        </td>
+                        <td class="text-right text-slate-500 text-xs">${item.time.replace(' ', '<br>')}</td>
                     `;
                     tbody.appendChild(tr);
                 });
-            } catch (error) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Ошибка загрузки истории.</td></tr>'; }
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-rose-500 font-medium">Ошибка загрузки</td></tr>'; }
         }
 
         async function loadDb() {
             const tbody = document.getElementById('db_tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium"><i class="ph ph-spinner-gap animate-spin text-3xl mb-2 block mx-auto"></i> Загрузка...</td></tr>';
             try {
                 const response = await fetch(`/api/parents?user_id=${userId}`);
                 const data = await response.json();
                 currentDbData = data.parents;
                 filterDb();
-            } catch (error) { 
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Ошибка загрузки базы данных.</td></tr>'; 
-            }
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-rose-500 font-medium">Ошибка загрузки</td></tr>'; }
         }
 
         function filterDb() {
             const query = document.getElementById('searchInput').value.toLowerCase();
-            
             const filteredData = currentDbData.filter(p => {
-                const parentName = (p.parent_full_name || '').toLowerCase();
-                const childName = (p.child_full_name || '').toLowerCase();
-                const sClass = (p.school_class || '').toLowerCase();
-                const phone = (p.phone || '').toLowerCase();
-                const tgId = String(p.telegram_id || '');
-                const statusName = statusNames[p.student_status || 'present'].toLowerCase();
-
-                return parentName.includes(query) || 
-                       childName.includes(query) || 
-                       sClass.includes(query) || 
-                       phone.includes(query) || 
-                       tgId.includes(query) ||
-                       statusName.includes(query);
+                const searchStr = `${p.parent_full_name} ${p.child_full_name} ${p.school_class} ${p.phone} ${p.telegram_id} ${statusNames[p.student_status||'present']}`.toLowerCase();
+                return searchStr.includes(query);
             });
-            
             renderDbTable(filteredData);
         }
 
@@ -409,38 +458,42 @@
             tbody.innerHTML = '';
             
             if (dataArray.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">Записи не найдены.</td></tr>';
-                return;
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium">Ничего не найдено</td></tr>'; return;
             }
 
             dataArray.forEach((p) => {
                 const tr = document.createElement('tr');
                 const st = p.student_status || 'present';
+                const style = statusStyles[st];
                 
-                let selectClass = `w-full p-1 text-xs border rounded outline-none font-medium transition-colors ${statusClasses[st]}`;
+                let selectClass = `w-full px-2 py-1.5 text-xs font-semibold rounded-lg ring-1 outline-none transition-all cursor-pointer ${style.bg} ${style.text} ${style.ring} hover:opacity-80`;
                 
-                let tgIdCell = userRole === 'teacher' ? '' : `<td class="text-xs text-gray-500">${p.telegram_id}</td>`;
-                let contactsCell = userRole === 'teacher' ? '' : `<td class="text-xs"><div class="text-gray-600">${p.email}</div><div class="text-gray-800 font-medium">${p.phone}</div></td>`;
+                let tgIdCell = userRole === 'teacher' ? '' : `<td class="text-xs text-slate-400 font-mono">${p.telegram_id}</td>`;
+                let contactsCell = userRole === 'teacher' ? '' : `<td><div class="text-xs text-slate-500 mb-0.5">${p.email}</div><div class="text-sm text-slate-700 font-medium">${p.phone}</div></td>`;
                 let actionsCell = userRole === 'teacher' ? '' : `
-                    <td class="text-center space-x-2 whitespace-nowrap">
-                        <button onclick="openEditModal(${p.id})" class="text-blue-500 hover:text-blue-700 p-1">✏️</button>
-                        <button onclick="deleteParent(${p.id})" class="text-red-500 hover:text-red-700 p-1">🗑️</button>
+                    <td class="text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="openEditModal(${p.id}, false)" class="text-slate-400 hover:text-primary bg-slate-50 hover:bg-primary/10 p-1.5 rounded-md transition-colors"><i class="ph-fill ph-pencil-simple text-lg"></i></button>
+                            <button onclick="deleteParent(${p.id})" class="text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-1.5 rounded-md transition-colors"><i class="ph-fill ph-trash text-lg"></i></button>
+                        </div>
                     </td>
                 `;
 
                 tr.innerHTML = `
-                    <td class="font-medium text-gray-600">${p.id}</td>
+                    <td class="text-slate-400 font-medium text-xs">${p.id}</td>
                     ${tgIdCell}
-                    <td class="font-medium">${p.parent_full_name}</td>
-                    <td>${p.child_full_name}</td>
-                    <td><span class="px-2 py-1 bg-gray-100 rounded text-xs font-bold">${p.school_class}</span></td>
                     <td>
+                        <div class="font-semibold text-slate-900">${p.parent_full_name}</div>
+                        <div class="text-sm text-slate-500 flex items-center gap-1 mt-0.5"><i class="ph-fill ph-student text-slate-400"></i> ${p.child_full_name}</div>
+                    </td>
+                    <td class="text-center"><span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold ring-1 ring-slate-200">${p.school_class}</span></td>
+                    <td class="px-4">
                         <select onchange="changeStatus(${p.id}, this)" class="${selectClass}">
-                            <option value="present" ${st === 'present' ? 'selected' : ''}>Присутствует ✅</option>
-                            <option value="sick" ${st === 'sick' ? 'selected' : ''}>Болеет 🤒</option>
-                            <option value="excused" ${st === 'excused' ? 'selected' : ''}>Уважительная 📝</option>
-                            <option value="unexcused" ${st === 'unexcused' ? 'selected' : ''}>Неуважительная ❌</option>
-                            <option value="late" ${st === 'late' ? 'selected' : ''}>Опоздал ⏰</option>
+                            <option value="present" ${st === 'present' ? 'selected' : ''}>Присутствует</option>
+                            <option value="sick" ${st === 'sick' ? 'selected' : ''}>Болеет</option>
+                            <option value="excused" ${st === 'excused' ? 'selected' : ''}>Уважительная</option>
+                            <option value="unexcused" ${st === 'unexcused' ? 'selected' : ''}>Неуважительная</option>
+                            <option value="late" ${st === 'late' ? 'selected' : ''}>Опоздал</option>
                         </select>
                     </td>
                     ${contactsCell}
@@ -456,40 +509,32 @@
             
             try {
                 const response = await fetch(`/api/parents/${parentId}/status?user_id=${userId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus })
                 });
                 const result = await response.json();
                 
                 if (result.status === 'success') {
                     const index = currentDbData.findIndex(p => p.id === parentId);
-                    if (index !== -1) {
-                        currentDbData[index].student_status = result.student_status;
-                    }
-                    selectElement.className = `w-full p-1 text-xs border rounded outline-none font-medium transition-colors ${statusClasses[result.student_status]}`;
+                    if (index !== -1) currentDbData[index].student_status = result.student_status;
+                    const s = statusStyles[result.student_status];
+                    selectElement.className = `w-full px-2 py-1.5 text-xs font-semibold rounded-lg ring-1 outline-none transition-all cursor-pointer hover:opacity-80 ${s.bg} ${s.text} ${s.ring}`;
                 } else {
-                    alert('Ошибка: ' + (result.message || 'Не удалось изменить статус'));
-                    selectElement.value = originalStatus;
+                    alert('Ошибка: ' + (result.message || 'Сбой')); selectElement.value = originalStatus;
                 }
-            } catch (error) {
-                alert('Ошибка соединения с сервером.');
-                selectElement.value = originalStatus;
-            }
+            } catch (error) { alert('Ошибка сети'); selectElement.value = originalStatus; }
         }
 
         function toggleFields() {
             const type = document.getElementById('target_type').value;
-            const classBlock = document.getElementById('class_block');
-            const studentBlock = document.getElementById('student_block');
-            const parentBlock = document.getElementById('parent_block');
+            document.getElementById('class_block').classList.add('hidden');
+            document.getElementById('student_block').classList.add('hidden');
+            document.getElementById('parent_block').classList.add('hidden');
             
-            if (['', 'all', 'sick', 'excused', 'unexcused', 'late'].includes(type)) {
-                classBlock.classList.add('hidden'); studentBlock.classList.add('hidden'); parentBlock.classList.add('hidden');
-            } else if (type === 'class') {
-                classBlock.classList.remove('hidden'); studentBlock.classList.add('hidden'); parentBlock.classList.add('hidden');
-            } else if (type === 'student') {
-                classBlock.classList.remove('hidden'); studentBlock.classList.remove('hidden'); handleClassChange();
+            if (type === 'class') { document.getElementById('class_block').classList.remove('hidden'); } 
+            else if (type === 'student') {
+                document.getElementById('class_block').classList.remove('hidden');
+                document.getElementById('student_block').classList.remove('hidden');
+                handleClassChange();
             }
         }
 
@@ -497,11 +542,8 @@
             const type = document.getElementById('target_type').value;
             const className = document.getElementById('class_select').value;
             const studentSelect = document.getElementById('student_select');
-            const parentBlock = document.getElementById('parent_block');
             
-            parentBlock.classList.add('hidden');
-            document.getElementById('parent_select').innerHTML = '<option value="">-- Выберите родителя --</option>';
-
+            document.getElementById('parent_block').classList.add('hidden');
             if (type === 'student' && className) {
                 studentSelect.innerHTML = '<option value="">Загрузка...</option>';
                 try {
@@ -509,146 +551,105 @@
                     const data = await response.json();
                     currentClassData = data.students;
                     studentSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
-                    
-                    const uniqueStudents = [...new Set(currentClassData.map(s => s.child_full_name))];
-                    uniqueStudents.forEach(studentName => {
-                        const option = document.createElement('option');
-                        option.value = studentName; option.textContent = studentName;
-                        studentSelect.appendChild(option);
+                    [...new Set(currentClassData.map(s => s.child_full_name))].forEach(name => {
+                        studentSelect.appendChild(new Option(name, name));
                     });
-                } catch (error) { studentSelect.innerHTML = '<option value="">Ошибка загрузки</option>'; }
-            } else {
-                studentSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
-                currentClassData = [];
+                } catch (error) { studentSelect.innerHTML = '<option value="">Ошибка</option>'; }
             }
         }
 
         function handleStudentChange() {
-            const studentName = document.getElementById('student_select').value;
+            const name = document.getElementById('student_select').value;
             const parentBlock = document.getElementById('parent_block');
             const parentSelect = document.getElementById('parent_select');
-            
-            if (studentName) {
+            if (name) {
                 parentBlock.classList.remove('hidden');
                 parentSelect.innerHTML = '<option value="">-- Выберите родителя --</option>';
-                const parents = currentClassData.filter(s => s.child_full_name === studentName);
-                parents.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.telegram_id; option.textContent = p.parent_full_name;
-                    parentSelect.appendChild(option);
+                currentClassData.filter(s => s.child_full_name === name).forEach(p => {
+                    parentSelect.appendChild(new Option(p.parent_full_name, p.telegram_id));
                 });
-            } else {
-                parentBlock.classList.add('hidden');
-                parentSelect.innerHTML = '<option value="">-- Выберите родителя --</option>';
-            }
+            } else { parentBlock.classList.add('hidden'); }
         }
 
         async function sendMessage() {
             const targetType = document.getElementById('target_type').value;
-            
-            if (!targetType) { 
-                showStatus('Выберите тип рассылки!', 'text-red-500'); 
-                return; 
-            }
+            if (!targetType) return showStatus('Выберите аудиторию!', 'text-rose-500');
             
             let targetValue = 'all';
-            
-            if (['sick', 'excused', 'unexcused', 'late'].includes(targetType)) {
-                targetValue = targetType;
-            } else if (targetType === 'class') {
+            if (['sick', 'excused', 'unexcused', 'late'].includes(targetType)) targetValue = targetType;
+            else if (targetType === 'class') {
                 targetValue = document.getElementById('class_select').value;
-                if (!targetValue) { showStatus('Выберите класс для отправки!', 'text-red-500'); return; }
+                if (!targetValue) return showStatus('Выберите класс!', 'text-rose-500');
             } else if (targetType === 'student') {
-                const studentValue = document.getElementById('student_select').value;
-                if (!studentValue) { showStatus('Выберите ученика!', 'text-red-500'); return; }
                 targetValue = document.getElementById('parent_select').value;
-                if (!targetValue) { showStatus('Выберите родителя для отправки!', 'text-red-500'); return; }
+                if (!targetValue) return showStatus('Выберите родителя!', 'text-rose-500');
             }
 
-            const text = document.getElementById('message').value;
-            if (!text.trim()) { showStatus('Введите текст сообщения!', 'text-red-500'); return; }
+            const text = document.getElementById('message').value.trim();
+            if (!text) return showStatus('Введите текст сообщения!', 'text-rose-500');
 
-            if (targetType === 'all') {
-                if (!confirm('ВНИМАНИЕ! Вы собираетесь отправить сообщение ВСЕМ родителям школы. Вы уверены, что хотите продолжить?')) {
-                    return;
-                }
-            }
+            if (targetType === 'all' && !confirm('Отправить ВСЕМ родителям школы?')) return;
 
-            const sendBtn = document.querySelector('button[onclick="sendMessage()"]');
-            sendBtn.disabled = true;
-            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-
-            showStatus('Отправка...', 'text-blue-500');
-            
+            showStatus('<i class="ph ph-spinner animate-spin"></i> Отправка...', 'text-primary');
             try {
                 const response = await fetch('/api/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target_type: targetType, target_value: targetValue, text: text, user_id: userId })
                 });
                 const result = await response.json();
                 if (result.status === 'success') {
-                    showStatus(`Успешно отправлено ${result.count} родителям.`, 'text-green-500');
+                    showStatus(`<i class="ph-fill ph-check-circle"></i> Успешно отправлено: ${result.count}`, 'text-emerald-600');
                     document.getElementById('message').value = '';
-                    document.getElementById('template_select').value = '';
                     setTimeout(() => switchTab('history'), 1500);
-                } else { 
-                    showStatus(result.message || 'Ошибка при отправке.', 'text-red-500'); 
-                }
-            } catch (error) { 
-                showStatus('Ошибка соединения с сервером.', 'text-red-500'); 
-            } finally {
-                sendBtn.disabled = false;
-                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
+                } else showStatus(result.message || 'Ошибка', 'text-rose-500');
+            } catch (e) { showStatus('Ошибка сети', 'text-rose-500'); }
         }
 
-        function showStatus(text, colorClass) {
-            const statusEl = document.getElementById('status');
-            statusEl.innerText = text; statusEl.className = `mt-4 font-medium text-center ${colorClass}`;
+        function showStatus(html, colorClass) {
+            const el = document.getElementById('status');
+            el.innerHTML = html; el.className = `text-sm font-medium w-full sm:w-auto text-center sm:text-left ${colorClass}`;
         }
 
-        function openAddModal() {
-            isCreatingNew = true;
-            editingParentId = null;
-            document.getElementById('modal_title').innerText = "Добавление родителя";
-            document.getElementById('tg_id_block').classList.remove('hidden');
-            
-            document.getElementById('edit_telegram_id').value = '';
-            document.getElementById('edit_parent_name').value = '';
-            document.getElementById('edit_child_name').value = '';
-            document.getElementById('edit_school_class').value = '';
-            document.getElementById('edit_email').value = 'Не указан';
-            document.getElementById('edit_phone').value = '';
-            document.getElementById('edit_address').value = 'Не указан';
-            document.getElementById('edit_modal').classList.remove('hidden');
-        }
-
-        function openEditModal(id) {
-            // Исправлено: нестрогое сравнение (==) защищает от несовпадения типов Number и String
-            const parent = currentDbData.find(p => p.id == id);
-            if (!parent) return;
-            
-            isCreatingNew = false;
+        function openEditModal(id, isNew = false) {
+            const modal = document.getElementById('edit_modal');
+            const content = document.getElementById('modal_content');
+            isCreatingNew = isNew;
             editingParentId = id;
-            document.getElementById('modal_title').innerText = "Редактирование записи";
-            document.getElementById('tg_id_block').classList.add('hidden');
-
-            document.getElementById('edit_parent_name').value = parent.parent_full_name || '';
-            document.getElementById('edit_child_name').value = parent.child_full_name || '';
             
-            // Задаем класс из базы в селект, приводя к верхнему регистру для точного совпадения
-            const sClass = (parent.school_class || '').trim().toUpperCase();
-            document.getElementById('edit_school_class').value = sClass;
+            document.getElementById('modal_title').innerText = isNew ? "Новый профиль" : "Редактирование профиля";
+            document.getElementById('tg_id_block').style.display = isNew ? 'block' : 'none';
             
-            document.getElementById('edit_email').value = parent.email || '';
-            document.getElementById('edit_phone').value = parent.phone || '';
-            document.getElementById('edit_address').value = parent.address || '';
-            document.getElementById('edit_modal').classList.remove('hidden');
+            if (isNew) {
+                document.querySelectorAll('#edit_modal input, #edit_modal select').forEach(el => el.value = '');
+            } else {
+                const p = currentDbData.find(x => x.id == id);
+                if (p) {
+                    document.getElementById('edit_parent_name').value = p.parent_full_name || '';
+                    document.getElementById('edit_child_name').value = p.child_full_name || '';
+                    document.getElementById('edit_school_class').value = (p.school_class || '').trim().toUpperCase();
+                    document.getElementById('edit_email').value = p.email || '';
+                    document.getElementById('edit_phone').value = p.phone || '';
+                    document.getElementById('edit_address').value = p.address || '';
+                }
+            }
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Анимация появления
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            });
         }
 
         function closeEditModal() {
-            document.getElementById('edit_modal').classList.add('hidden');
+            const modal = document.getElementById('edit_modal');
+            const content = document.getElementById('modal_content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
         }
 
         async function saveParent() {
@@ -660,50 +661,30 @@
                 phone: document.getElementById('edit_phone').value,
                 address: document.getElementById('edit_address').value
             };
-
-            // Проверка на то, выбран ли класс
-            if (!data.school_class) {
-                alert('Пожалуйста, выберите класс из списка!');
-                return;
-            }
+            if (!data.school_class) return alert('Выберите класс!');
 
             try {
                 let url, method;
                 if (isCreatingNew) {
                     data.telegram_id = parseInt(document.getElementById('edit_telegram_id').value);
-                    if (!data.telegram_id) { alert('Введите корректный Telegram ID'); return; }
-                    url = `/api/parents?user_id=${userId}`;
-                    method = 'POST';
+                    if (!data.telegram_id) return alert('Введите Telegram ID');
+                    url = `/api/parents?user_id=${userId}`; method = 'POST';
                 } else {
-                    if (!editingParentId) return;
-                    url = `/api/parents/${editingParentId}?user_id=${userId}`;
-                    method = 'PUT';
+                    url = `/api/parents/${editingParentId}?user_id=${userId}`; method = 'PUT';
                 }
 
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                
-                if (result.status === 'success') { 
-                    closeEditModal(); 
-                    loadDb(); 
-                } else { 
-                    alert('Ошибка: ' + (result.message || 'Сбой при сохранении')); 
-                }
-            } catch (error) { alert('Ошибка соединения с сервером.'); }
+                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if ((await response.json()).status === 'success') { closeEditModal(); loadDb(); } 
+                else alert('Ошибка сохранения');
+            } catch (e) { alert('Ошибка сети'); }
         }
 
         async function deleteParent(id) {
-            if (!confirm('Удалить эту запись? Действие необратимо.')) return;
+            if (!confirm('Удалить профиль? Это действие необратимо.')) return;
             try {
                 const response = await fetch(`/api/parents/${id}?user_id=${userId}`, { method: 'DELETE' });
-                const result = await response.json();
-                if (result.status === 'success') { loadDb(); } 
-                else { alert('Ошибка при удалении данных.'); }
-            } catch (error) { alert('Ошибка соединения с сервером.'); }
+                if ((await response.json()).status === 'success') loadDb(); else alert('Ошибка удаления');
+            } catch (e) { alert('Ошибка сети'); }
         }
 
         initApp();
