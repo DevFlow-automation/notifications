@@ -9,27 +9,31 @@ export default async function handler(req, res) {
     const ADMIN_IDS = [8771384583, 229049117]; 
     const DEPUTY_IDS = [387863654, 21900086, 87180537, 32542185, 1759984801, 11763622, 1176641277, 117636223, 219000864];
     const TEACHERS = {
-    593614259: "1А", 7475228092: "1Б", 165555820: "1В", 6759744115: "1Г",
-    262935335: "2А", 2067119625: "2Б", 192592122: "2В", 261773072: "2Г",
-    843534212: "3А", 83655322: "3Б", 1579165503: "3В", 1849602045: "3Г",
-    389444120: "4А", 8300203162: "4Б", 132622662: "4В",
-    267481288: "5А", 285756001: "5Б", 937544028: "5В",
-    127589326: "6А", 905178719: "6Б",
-    8885418064: "7А", 8099039998: "7Б", 144330475: "7В",
-    241743825: "8А", 42760022: "8Б",
-    1329417314: "9А", 124341010: "10А", 539135124: "11А"
-};
+        593614259: "1А", 7475228092: "1Б", 165555820: "1В", 6759744115: "1Г",
+        262935335: "2А", 2067119625: "2Б", 192592122: "2В", 261773072: "2Г",
+        843534212: "3А", 83655322: "3Б", 1579165503: "3В", 1849602045: "3Г",
+        389444120: "4А", 8300203162: "4Б", 132622662: "4В",
+        267481288: "5А", 815313499: "5Б", 937544028: "5В",
+        127589326: "6А", 905178719: "6Б",
+        8885418064: "7А", 8099039998: "7Б", 144330475: "7В",
+        241743825: "8А", 42760022: "8Б",
+        1329417314: "9А", 124341010: "10А", 539135124: "11А"
+    };
 
     try {
         if (ADMIN_IDS.includes(userId) || DEPUTY_IDS.includes(userId)) {
-            // Получаем уникальные классы из базы
-            const result = await sql`SELECT DISTINCT school_class FROM parents ORDER BY school_class`;
-            const classes = result.map(row => row.school_class).filter(Boolean);
+            // Получаем классы из базы (без сортировки SQL)
+            const result = await sql`SELECT DISTINCT school_class FROM parents`;
+            let classes = result.map(row => row.school_class).filter(Boolean);
+            
+            // УМНАЯ СОРТИРОВКА: 1А, 2Б, 10А, 11А
+            classes.sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
+            
             return res.status(200).json({ classes });
         } else if (TEACHERS[userId]) {
             return res.status(200).json({ classes: [TEACHERS[userId]] });
         }
-
+        
         return res.status(200).json({ classes: [] });
     } catch (error) {
         return res.status(500).json({ error: error.message });
