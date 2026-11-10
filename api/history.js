@@ -15,7 +15,7 @@ export default async function handler(req, res) {
                 m.message_text, 
                 m.timestamp,
                 (SELECT COUNT(id) FROM acknowledgments a WHERE a.history_id = m.id) as ack_count
-            FROM messages m
+            FROM history m
             ORDER BY m.timestamp DESC
             LIMIT 50
         `;
