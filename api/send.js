@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
         // 1. Создаем запись в истории сообщений и получаем её ID (RETURNING id)
        const msgResult = await sql`
-            INSERT INTO messages (sender_id, recipient_id, message_text, timestamp)
+            INSERT INTO history (sender_id, recipient_id, message_text, timestamp)
             VALUES (${user_id}, ${target_value}, ${text}, NOW())
             RETURNING id
         `;
