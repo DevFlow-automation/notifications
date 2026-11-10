@@ -1,7 +1,6 @@
-import { Bot, webhookCallback } from 'grammy';
+import { Bot } from 'grammy';
 import { neon } from '@neondatabase/serverless';
 
-// Инициализация БД и бота
 const sql = neon(process.env.DATABASE_URL);
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -12,12 +11,17 @@ const TEACHERS = {
     262935335: "2А", 2067119625: "2Б", 192592122: "2В", 261773072: "2Г",
     843534212: "3А", 83655322: "3Б", 1579165503: "3В", 1849602045: "3Г",
     389444120: "4А", 8300203162: "4Б", 132622662: "4В",
-    267481288: "5А", 285756001: "5Б", 937544028: "5В",
+    267481288: "5А", 815313499: "5Б", 937544028: "5В",
     127589326: "6А", 905178719: "6Б",
     8885418064: "7А", 8099039998: "7Б", 144330475: "7В",
     241743825: "8А", 42760022: "8Б",
     1329417314: "9А", 124341010: "10А", 539135124: "11А"
 };
+
+// Глобальный перехватчик ошибок бота (защита от падений)
+bot.catch((err) => {
+    console.error(`Ошибка обработки у пользователя ${err.ctx.from?.id}:`, err.error);
+});
 
 bot.command('start', async (ctx) => {
     const userId = ctx.from.id;
@@ -34,22 +38,28 @@ bot.command('start', async (ctx) => {
                 inline_keyboard: [[{ text: "Панель управления", web_app: { url: WEBAPP_URL } }]]
             }
         });
+        
+        return; // КРИТИЧЕСКИ ВАЖНО: Останавливаем код, чтобы не дублировать сообщения
     }
 
-    // Проверяем, есть ли родитель в БД
-    const parents = await sql`SELECT * FROM parents WHERE telegram_id = ${userId} LIMIT 1`;
-
-    if (parents.length === 0) {
-        await ctx.reply(
-            "Добро пожаловать в официальный бот оповещений New Generation School.\n\nДля подключения к системе рассылки необходимо заполнить анкету.",
-            {
-                reply_markup: {
-                    inline_keyboard: [[{ text: "📝 Пройти регистрацию", web_app: { url: `${WEBAPP_URL}/register.html` } }]]
+    try {
+        const parents = await sql`SELECT * FROM parents WHERE telegram_id = ${userId} LIMIT 1`;
+        
+        if (parents.length === 0) {
+            await ctx.reply(
+                "Добро пожаловать в официальный бот оповещений New Generation School.\n\nДля подключения к системе рассылки необходимо заполнить анкету.", 
+                {
+                    reply_markup: {
+                        inline_keyboard: [[{ text: "📝 Пройти регистрацию", web_app: { url: `${WEBAPP_URL}/register.html` } }]]
+                    }
                 }
-            }
-        );
-    } else if (!isStaff) {
-        await ctx.reply("Вы уже зарегистрированы в системе оповещений.\n\nЕсли вы хотите добавить данные еще одного ребенка, отправьте команду /add_child");
+            );
+        } else {
+            await ctx.reply("Вы уже зарегистрированы в системе оповещений.\n\nЕсли вы хотите добавить данные еще одного ребенка, отправьте команду /add_child");
+        }
+    } catch (error) {
+        console.error("Ошибка БД при /start:", error);
+        await ctx.reply("Система временно недоступна. Пожалуйста, попробуйте позже.");
     }
 });
 
@@ -59,23 +69,34 @@ bot.callbackQuery(/ack_(\d+)/, async (ctx) => {
 
     try {
         const existing = await sql`
-            SELECT id FROM acknowledgments
+            SELECT id FROM acknowledgments 
             WHERE history_id = ${historyId} AND telegram_id = ${userId}
         `;
 
-       if (existing.length === 0) {
+        if (existing.length === 0) {
+            // ИСПРАВЛЕНО: добавлено NOW() для колонки timestamp
             await sql`
                 INSERT INTO acknowledgments (history_id, telegram_id, timestamp) 
                 VALUES (${historyId}, ${userId}, NOW())
             `;
         }
         await ctx.answerCallbackQuery("Вы подтвердили ознакомление!");
-        await ctx.editMessageReplyMarkup(); // Убирает кнопку
+        await ctx.editMessageReplyMarkup(); 
     } catch (error) {
         console.error(error);
         await ctx.answerCallbackQuery({ text: "Произошла ошибка.", show_alert: true });
     }
 });
 
-// Экспорт для Vercel Serverless
-export default webhookCallback(bot, 'http');
+// Пуленепробиваемый обработчик для Vercel Serverless
+// ГАРАНТИРУЕТ отправку 200 OK в Telegram, чтобы избежать шторма дублей
+export default async function handler(req, res) {
+    if (req.method === 'POST') {
+        try {
+            await bot.handleUpdate(req.body);
+        } catch (error) {
+            console.error("Критическая ошибка вебхука:", error);
+        }
+    }
+    return res.status(200).send('OK');
+}
