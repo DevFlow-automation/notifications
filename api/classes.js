@@ -22,11 +22,10 @@ export default async function handler(req, res) {
 
     try {
         if (ADMIN_IDS.includes(userId) || DEPUTY_IDS.includes(userId)) {
-            // Получаем классы из базы (без сортировки SQL)
             const result = await sql`SELECT DISTINCT school_class FROM parents`;
             let classes = result.map(row => row.school_class).filter(Boolean);
             
-            // УМНАЯ СОРТИРОВКА: 1А, 2Б, 10А, 11А
+            // Умная сортировка: 1А, 2Б, 10А, 11А
             classes.sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
             
             return res.status(200).json({ classes });
