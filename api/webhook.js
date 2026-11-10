@@ -90,9 +90,12 @@ bot.callbackQuery(/ack_(\d+)/, async (ctx) => {
 
 // Пуленепробиваемый обработчик для Vercel Serverless
 // ГАРАНТИРУЕТ отправку 200 OK в Telegram, чтобы избежать шторма дублей
+// Пуленепробиваемый обработчик для Vercel Serverless
 export default async function handler(req, res) {
     if (req.method === 'POST') {
         try {
+            // Явная инициализация бота для бессерверной среды
+            await bot.init(); 
             await bot.handleUpdate(req.body);
         } catch (error) {
             console.error("Критическая ошибка вебхука:", error);
